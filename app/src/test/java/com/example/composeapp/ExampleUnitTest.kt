@@ -1,4 +1,4 @@
-package com.example.composeapp
+packag com.example.composeapp
 
 import org.junit.Test
 import org.junit.Assert.*
