@@ -1,5 +1,3 @@
 <resources>
-    <string name="app_name">ComposeSampleApp</string>
-    <string name="welcome_message">Welcome to ComposeSampleApp!</string>
-    <string name="btn_action">Execute Action</string>
+    <string name="app_name">MoreCut</string>
 </resources>

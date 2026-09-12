@@ -1,0 +1,41 @@
+version: 1
+project: MoreCut
+architecture:
+  style: clean-architecture-mvvm
+  source_of_truth: local
+  ui: jetpack-compose-material3
+  navigation: compose-navigation
+  state: stateflow-viewmodel
+  async: coroutines-flow
+  cloud: optional-supabase
+  persistence: room-and-datastore-planned
+  background: workmanager-planned
+  media: media3-and-native-gpu-contracts-planned
+  observability: sentry-planned
+boundaries:
+  ui_depends_on: feature
+  feature_depends_on: domain
+  domain_depends_on: contracts
+  infrastructure_implements: contracts
+rules:
+  - Basic editing must remain functional when offline.
+  - Cloud sync must never overwrite unacknowledged local edits.
+  - Binary media is referenced by asset metadata; it is not stored in relational project rows.
+  - Project documents are versioned and migratable.
+  - Downloaded content is versioned, checksummed, and installed atomically.
+  - No service-role credentials ship in the Android app.
+phase_1:
+  includes:
+    - app-shell
+    - home-screen
+    - projects-screen
+    - settings-screen
+    - new-project-entry
+    - connectivity-state-shell
+  excludes:
+    - full-timeline-editor
+    - media-render-engine
+    - cloud-auth
+    - cloud-sync
+    - asset-marketplace
+    - export-engine
