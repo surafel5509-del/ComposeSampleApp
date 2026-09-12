@@ -55,6 +55,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.11.0")
     implementation("androidx.media3:media3-ui:1.11.0")
     implementation("androidx.media3:media3-ui-compose-material3:1.11.0")
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
 
     implementation("androidx.room:room-runtime:2.8.3")
     implementation("androidx.room:room-ktx:2.8.3")
