@@ -28,11 +28,16 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
+
+      - name: Setup Gradle 9.1.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.1'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -40,10 +45,10 @@ jobs:
           cmdline-tools-version: 'latest'
 
       - name: Run Unit Tests
-        run: bash ./gradlew test --stacktrace
+        run: gradle test --stacktrace
 
       - name: Build Android Artifacts (assembleDebug)
-        run: bash ./gradlew assembleDebug --stacktrace --scan
+        run: gradle assembleDebug --stacktrace --scan
 
       - name: Upload Debug APK Artifact
         if: always()
