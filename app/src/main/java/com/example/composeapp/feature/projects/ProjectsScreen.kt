@@ -36,6 +36,7 @@ import com.example.composeapp.feature.home.HomeViewModel
 @Composable
 fun ProjectsScreen(
     onBack: () -> Unit,
+    onOpenProject: (String) -> Unit,
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -74,7 +75,11 @@ fun ProjectsScreen(
             ) {
                 item { Text("Local projects (${state.projects.size})", style = MaterialTheme.typography.headlineSmall) }
                 items(state.projects, key = { it.projectId }) { project ->
-                    ProjectRow(project = project, onDelete = { viewModel.deleteProject(project.projectId) })
+                    ProjectRow(
+                        project = project,
+                        onOpen = { onOpenProject(project.projectId) },
+                        onDelete = { viewModel.deleteProject(project.projectId) },
+                    )
                 }
             }
         }
@@ -108,11 +113,11 @@ fun ProjectsScreen(
 }
 
 @Composable
-private fun ProjectRow(project: ProjectEntity, onDelete: () -> Unit) {
+private fun ProjectRow(project: ProjectEntity, onOpen: () -> Unit, onDelete: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(project.name, style = MaterialTheme.typography.titleMedium)
@@ -121,6 +126,7 @@ private fun ProjectRow(project: ProjectEntity, onDelete: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Button(onClick = onOpen) { Text("Open editor") }
             }
             OutlinedButton(onClick = onDelete) { Text("Delete") }
         }
