@@ -30,4 +30,8 @@ class ProjectFileStore(
         if (!file.exists()) return@withContext null
         codec.decode(file.readText())
     }
+
+    suspend fun delete(projectId: String) = withContext(Dispatchers.IO) {
+        File(root, projectId).deleteRecursively()
+    }
 }
