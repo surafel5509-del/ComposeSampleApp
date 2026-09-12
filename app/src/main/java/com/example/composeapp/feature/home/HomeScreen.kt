@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.IconButton
@@ -36,21 +35,12 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("MoreCut", style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "Professional editing, offline first.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text("Professional editing, offline first.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            IconButton(onClick = onOpenSettings) {
-                Text("⚙", style = MaterialTheme.typography.titleLarge)
-            }
+            IconButton(onClick = onOpenSettings) { Text("⚙", style = MaterialTheme.typography.titleLarge) }
         }
 
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -61,26 +51,21 @@ fun HomeScreen(
             }
         }
 
-        Button(
-            onClick = onCreateProject,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
+        Button(onClick = onCreateProject, modifier = Modifier.fillMaxWidth().height(52.dp)) {
             Text("Create new project")
         }
 
-        OutlinedButton(
-            onClick = onOpenProjects,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
+        OutlinedButton(onClick = onOpenProjects, modifier = Modifier.fillMaxWidth().height(52.dp)) {
             Text("Projects (${state.projectCount})")
         }
 
         Spacer(Modifier.height(8.dp))
-        Text("No recent projects yet", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Create a project to start building your first timeline.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (state.hasRecentProjects) {
+            Text("${state.projectCount} local project${if (state.projectCount == 1) "" else "s"}", style = MaterialTheme.typography.titleMedium)
+            Text("Project metadata and versioned documents are stored on-device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            Text("No projects yet", style = MaterialTheme.typography.titleMedium)
+            Text("Create a project to start building your first timeline.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
