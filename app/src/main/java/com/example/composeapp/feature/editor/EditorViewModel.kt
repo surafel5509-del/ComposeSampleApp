@@ -3,6 +3,7 @@ package com.example.composeapp.feature.editor
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import android.media.MediaMetadataRetriever
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,10 +17,12 @@ import com.example.composeapp.core.model.TrackType
 import com.example.composeapp.core.project.OfflineProjectRepository
 import com.example.composeapp.core.storage.ProjectFileStore
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
     private val database = DatabaseFactory.create(application)
@@ -59,14 +62,20 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             val project = controller.state.value.project ?: return@launch
-            val durationMs = readDurationMs(uri)
+            val result = withContext(Dispatchers.IO) {
+                runCatching { readDurationMs(uri) }
+            }
+            val durationMs = result.getOrElse {
+                _state.value = _state.value.copy(error = "The selected video could not be read.")
+                return@launch
+            }
             if (durationMs <= 0L) {
                 _state.value = _state.value.copy(error = "The selected video has no readable duration.")
                 return@launch
             }
 
             val assetId = UUID.randomUUID().toString()
-            val assetName = queryDisplayName(uri)
+            val assetName = withContext(Dispatchers.IO) { queryDisplayName(uri) }
             database.assetDao().upsert(
                 AssetEntity(
                     assetId = assetId,
@@ -109,12 +118,15 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun readDurationMs(uri: Uri): Long =
-        android.media.MediaMetadataRetriever().use { retriever ->
+    private fun readDurationMs(uri: Uri): Long {
+        val retriever = MediaMetadataRetriever()
+        return try {
             retriever.setDataSource(getApplication(), uri)
-            retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                ?.toLongOrNull() ?: 0L
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+        } finally {
+            retriever.release()
         }
+    }
 
     private fun queryDisplayName(uri: Uri): String? {
         getApplication<Application>().contentResolver.query(
