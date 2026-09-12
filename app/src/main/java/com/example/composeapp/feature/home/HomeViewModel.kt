@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 data class HomeUiState(
     val projectCount: Int = 0,
     val hasRecentProjects: Boolean = false,
+    val projects: List<ProjectEntity> = emptyList(),
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -31,24 +32,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             HomeUiState(
                 projectCount = projects.size,
                 hasRecentProjects = projects.isNotEmpty(),
+                projects = projects,
             )
         }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            HomeUiState(),
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun createProject(name: String): String? {
         val normalizedName = name.trim()
         if (normalizedName.isEmpty()) return null
-
-        val project = Project(
-            projectId = UUID.randomUUID().toString(),
-            name = normalizedName,
-            canvas = Canvas(),
-        )
-        val now = System.currentTimeMillis()
+        val project = Project(projectId = UUID.randomUUID().toString(), name = normalizedName, canvas = Canvas())
         viewModelScope.launch {
             fileStore.save(project)
             projectDao.upsert(
@@ -63,7 +55,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     frameRate = project.canvas.frameRate,
                     documentPath = "projects/${project.projectId}/project.json",
                     syncState = SyncState.LOCAL_ONLY.name,
-                    updatedAtEpochMs = now,
+                    updatedAtEpochMs = System.currentTimeMillis(),
                 ),
             )
         }
@@ -71,9 +63,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteProject(projectId: String) {
-        viewModelScope.launch {
-            projectDao.delete(projectId)
-        }
+        viewModelScope.launch { projectDao.delete(projectId) }
     }
 
     override fun onCleared() {
