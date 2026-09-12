@@ -49,6 +49,20 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun undo() { controller.undo() }
+
+    fun redo() { controller.redo() }
+
+    fun seekTo(positionMs: Long) { controller.seekTo(positionMs) }
+
+    fun setPlaying(playing: Boolean) { controller.setPlaying(playing) }
+
+    fun splitSelected(atTimelineMs: Long) { controller.splitSelected(atTimelineMs) }
+
+    fun deleteSelected() { controller.deleteSelected() }
+
+    fun selectClip(clipId: String?) { controller.selectClip(clipId) }
+
     fun importVideo(uri: Uri) {
         viewModelScope.launch {
             val context = getApplication<Application>()
