@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
+import com.example.composeapp.feature.editor.EditorScreen
 import com.example.composeapp.feature.home.HomeScreen
 import com.example.composeapp.feature.projects.ProjectsScreen
 import com.example.composeapp.feature.settings.SettingsScreen
@@ -15,6 +18,9 @@ private object Routes {
     const val HOME = "home"
     const val PROJECTS = "projects"
     const val SETTINGS = "settings"
+    const val EDITOR = "editor/{projectId}"
+
+    fun editor(projectId: String) = "editor/$projectId"
 }
 
 @Composable
@@ -32,10 +38,23 @@ fun MoreCutApp(navController: NavHostController) {
                 )
             }
             composable(Routes.PROJECTS) {
-                ProjectsScreen(onBack = { navController.popBackStack() })
+                ProjectsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenProject = { projectId -> navController.navigate(Routes.editor(projectId)) },
+                )
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = Routes.EDITOR,
+                arguments = listOf(navArgument("projectId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
+                EditorScreen(
+                    projectId = projectId,
+                    onBack = { navController.popBackStack() },
+                )
             }
         }
     }
