@@ -5,7 +5,6 @@ import com.example.composeapp.core.model.Project
 import com.example.composeapp.core.model.Track
 import com.example.composeapp.core.model.TrackType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TimelineEditorTest {
@@ -73,21 +72,24 @@ class TimelineEditorTest {
     }
 
     @Test
-    fun reorderMovesClipToRequestedIndex() {
+    fun reorderMovesClipAndRetimesTrackContiguously() {
         val project = Project(
             projectId = "p",
             name = "Test",
+            durationMs = 4_500,
             tracks = listOf(
                 Track("t", TrackType.VIDEO, listOf(
                     Clip("a", "asset", 0, 1_000),
-                    Clip("b", "asset", 1_000, 1_000),
-                    Clip("c", "asset", 2_000, 1_000),
+                    Clip("b", "asset", 1_000, 1_500),
+                    Clip("c", "asset", 2_500, 2_000),
                 )),
             ),
         )
         val result = TimelineEditor.reorder(project, "t", "c", 0)
-        assertEquals(listOf("c", "a", "b"), result.tracks.single().clips.map { it.clipId })
+        val clips = result.tracks.single().clips
+        assertEquals(listOf("c", "a", "b"), clips.map { it.clipId })
+        assertEquals(listOf(0L, 2_000L, 3_000L), clips.map { it.startMs })
+        assertEquals(4_500, result.durationMs)
         assertEquals(1, result.revision)
-        assertTrue(result.tracks.single().clips.isNotEmpty())
     }
 }
