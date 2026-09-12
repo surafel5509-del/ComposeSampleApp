@@ -63,7 +63,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteProject(projectId: String) {
-        viewModelScope.launch { projectDao.delete(projectId) }
+        viewModelScope.launch {
+            fileStore.delete(projectId)
+            projectDao.delete(projectId)
+        }
     }
 
     override fun onCleared() {
