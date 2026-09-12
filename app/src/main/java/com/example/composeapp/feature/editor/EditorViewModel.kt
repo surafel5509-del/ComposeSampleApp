@@ -101,7 +101,11 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
             controller.replaceProject(updatedProject)
             controller.save()
-            _state.value = _state.value.copy(assetName = assetName, error = null)
+            _state.value = _state.value.copy(
+                assetName = assetName,
+                previewUri = uri.toString(),
+                error = null,
+            )
         }
     }
 
@@ -136,5 +140,6 @@ data class EditorUiState(
     val opened: Boolean = false,
     val isLoading: Boolean = false,
     val assetName: String? = null,
+    val previewUri: String? = null,
     val error: String? = null,
 )
