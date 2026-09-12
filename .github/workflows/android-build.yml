@@ -42,8 +42,11 @@ jobs:
       - name: Install Android SDK packages
         shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
+          set -euo pipefail
+          sdkmanager --licenses </dev/null >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          test -d "$ANDROID_SDK_ROOT/platforms/android-35"
+          test -d "$ANDROID_SDK_ROOT/build-tools/35.0.0"
 
       - name: Run Unit Tests
         run: gradle test --stacktrace --no-daemon
