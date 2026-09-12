@@ -39,14 +39,11 @@ jobs:
         with:
           cmdline-tools-version: 'latest'
 
-      - name: Grant Execute Permission to Gradle Wrapper
-        run: chmod +x gradlew
-
-      - name: Run Unit Tests & Lint
-        run: ./gradlew test --stacktrace
+      - name: Run Unit Tests
+        run: bash ./gradlew test --stacktrace
 
       - name: Build Android Artifacts (assembleDebug)
-        run: ./gradlew assembleDebug --stacktrace --scan
+        run: bash ./gradlew assembleDebug --stacktrace --scan
 
       - name: Upload Debug APK Artifact
         if: always()
