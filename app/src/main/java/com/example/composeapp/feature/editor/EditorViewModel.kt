@@ -6,12 +6,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.database.AssetEntity
+import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.editor.EditorController
 import com.example.composeapp.core.model.AssetKind
 import com.example.composeapp.core.model.Clip
-import com.example.composeapp.core.model.Project
 import com.example.composeapp.core.model.Track
 import com.example.composeapp.core.model.TrackType
 import com.example.composeapp.core.project.OfflineProjectRepository
@@ -29,6 +28,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         fileStore = ProjectFileStore(application),
     )
     private val controller = EditorController(repository)
+    val editorState: StateFlow<com.example.composeapp.core.editor.EditorState> = controller.state
+
     private val _state = MutableStateFlow(EditorUiState())
     val state: StateFlow<EditorUiState> = _state.asStateFlow()
 
@@ -100,10 +101,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
             controller.replaceProject(updatedProject)
             controller.save()
-            _state.value = _state.value.copy(
-                assetName = assetName,
-                error = null,
-            )
+            _state.value = _state.value.copy(assetName = assetName, error = null)
         }
     }
 
