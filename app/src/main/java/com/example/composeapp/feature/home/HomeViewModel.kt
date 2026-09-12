@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.database.ProjectEntity
-import com.example.composeapp.core.model.Canvas
 import com.example.composeapp.core.project.OfflineProjectRepository
 import com.example.composeapp.core.storage.ProjectFileStore
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,13 +36,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
-    fun createProject(name: String): String? {
-        if (name.trim().isEmpty()) return null
-        var createdProjectId: String? = null
-        viewModelScope.launch {
-            createdProjectId = repository.createProject(name, Canvas()).projectId
-        }
-        return createdProjectId
+    fun createProject(name: String) {
+        val normalizedName = name.trim()
+        if (normalizedName.isEmpty()) return
+        viewModelScope.launch { repository.createProject(normalizedName) }
     }
 
     fun deleteProject(projectId: String) {
