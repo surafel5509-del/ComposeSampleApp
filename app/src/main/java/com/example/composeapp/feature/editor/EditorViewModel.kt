@@ -6,7 +6,6 @@ import android.net.Uri
 import android.media.MediaMetadataRetriever
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.composeapp.core.database.AssetEntity
 import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.editor.EditorController
@@ -110,7 +109,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             val asset = database.assetDao().findById(clip.assetId)
             val uri = asset?.originalUri?.let(Uri::parse) ?: return@launch
             _state.value = _state.value.copy(isExporting = true, exportUri = null, error = null)
-            val result = exportEngine.exportClip(uri, clip.sourceStartMs, clip.durationMs)
+            val result = exportEngine.exportClip(uri, clip.sourceStartMs, clip.durationMs, clip.edit)
             _state.value = _state.value.copy(isExporting = false, exportUri = result.getOrNull()?.toString(), error = result.exceptionOrNull()?.message)
         }
     }
