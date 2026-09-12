@@ -1,7 +1,8 @@
 package com.example.composeapp.feature.editor
 
 import android.net.Uri
-import androidx.compose.foundation.background
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,13 +31,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import com.example.composeapp.core.model.TrackType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -123,7 +122,7 @@ fun EditorScreen(
                             track.clips.forEach { clip ->
                                 Card(
                                     modifier = Modifier
-                                        .width((clip.durationMs / 30L).coerceIn(96L, 360L).dp)
+                                        .width((clip.durationMs / 30L).coerceIn(96L, 360L).toInt().dp)
                                         .height(64.dp),
                                 ) {
                                     Column(modifier = Modifier.padding(10.dp)) {
