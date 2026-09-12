@@ -39,9 +39,9 @@ jobs:
         with:
           cmdline-tools-version: 'latest'
           packages: |-
-            platform-tools
-            platforms;android-37
-            build-tools;36.0.0
+              platform-tools
+              platforms;android-35
+              build-tools;35.0.0
 
       - name: Run Unit Tests
         run: gradle test --stacktrace --no-daemon
