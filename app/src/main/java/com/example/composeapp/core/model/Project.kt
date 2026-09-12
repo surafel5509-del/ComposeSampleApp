@@ -38,4 +38,5 @@ data class Clip(
     val durationMs: Long,
     val sourceStartMs: Long = 0,
     val speed: Float = 1f,
+    val edit: ClipEditState = ClipEditState(),
 )
