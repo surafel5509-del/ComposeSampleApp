@@ -50,35 +50,30 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun undo() { controller.undo() }
-
     fun redo() { controller.redo() }
-
     fun seekTo(positionMs: Long) { controller.seekTo(positionMs) }
-
     fun setPlaying(playing: Boolean) { controller.setPlaying(playing) }
-
     fun splitSelected(atTimelineMs: Long) { controller.splitSelected(atTimelineMs) }
-
+    fun trimSelected(startMs: Long, durationMs: Long) { controller.trimSelected(startMs, durationMs) }
+    fun reorderSelected(targetIndex: Int) { controller.reorderSelected(targetIndex) }
     fun deleteSelected() { controller.deleteSelected() }
-
     fun selectClip(clipId: String?) { controller.selectClip(clipId) }
+
+    fun save() {
+        viewModelScope.launch {
+            if (!controller.save()) _state.value = _state.value.copy(error = "Nothing to save yet.")
+        }
+    }
 
     fun importVideo(uri: Uri) {
         viewModelScope.launch {
             val context = getApplication<Application>()
             try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                )
-            } catch (_: SecurityException) {
-                // Some providers do not expose persistable permissions; the import still works now.
-            }
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (_: SecurityException) { }
 
             val project = controller.state.value.project ?: return@launch
-            val result = withContext(Dispatchers.IO) {
-                runCatching { readDurationMs(uri) }
-            }
+            val result = withContext(Dispatchers.IO) { runCatching { readDurationMs(uri) } }
             val durationMs = result.getOrElse {
                 _state.value = _state.value.copy(error = "The selected video could not be read.")
                 return@launch
@@ -124,11 +119,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
             controller.replaceProject(updatedProject)
             controller.save()
-            _state.value = _state.value.copy(
-                assetName = assetName,
-                previewUri = uri.toString(),
-                error = null,
-            )
+            controller.selectClip(clip.clipId)
+            _state.value = _state.value.copy(assetName = assetName, previewUri = uri.toString(), error = null)
         }
     }
 
@@ -144,11 +136,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun queryDisplayName(uri: Uri): String? {
         getApplication<Application>().contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null,
+            uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null,
         )?.use { cursor ->
             if (cursor.moveToFirst()) return cursor.getString(0)
         }
