@@ -66,12 +66,26 @@ object TimelineEditor {
         val track = project.tracks.firstOrNull { it.trackId == trackId } ?: return project
         val currentIndex = track.clips.indexOfFirst { it.clipId == clipId }
         if (currentIndex < 0 || targetIndex !in track.clips.indices || currentIndex == targetIndex) return project
+
         val reordered = track.clips.toMutableList().apply {
             add(targetIndex, removeAt(currentIndex))
         }
+        var cursorMs = reordered.minOfOrNull { it.startMs } ?: 0L
+        val retimed = reordered.map { clip ->
+            val retimedClip = clip.copy(startMs = cursorMs)
+            cursorMs += clip.durationMs
+            retimedClip
+        }
+
         return project.copy(
             revision = project.revision + 1,
-            tracks = project.tracks.map { current -> if (current.trackId == trackId) current.copy(clips = reordered) else current },
+            durationMs = project.tracks.maxOfOrNull { current ->
+                if (current.trackId == trackId) cursorMs
+                else current.clips.maxOfOrNull { it.startMs + it.durationMs } ?: 0L
+            } ?: cursorMs,
+            tracks = project.tracks.map { current ->
+                if (current.trackId == trackId) current.copy(clips = retimed) else current
+            },
         )
     }
 
