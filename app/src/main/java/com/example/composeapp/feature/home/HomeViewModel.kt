@@ -6,10 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.database.ProjectEntity
 import com.example.composeapp.core.model.Canvas
-import com.example.composeapp.core.model.Project
+import com.example.composeapp.core.project.OfflineProjectRepository
 import com.example.composeapp.core.storage.ProjectFileStore
-import com.example.composeapp.core.sync.SyncState
-import java.util.UUID
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -24,10 +22,12 @@ data class HomeUiState(
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val database = DatabaseFactory.create(application)
-    private val projectDao = database.projectDao()
-    private val fileStore = ProjectFileStore(application)
+    private val repository = OfflineProjectRepository(
+        projectDao = database.projectDao(),
+        fileStore = ProjectFileStore(application),
+    )
 
-    val uiState: StateFlow<HomeUiState> = projectDao.observeProjects()
+    val uiState: StateFlow<HomeUiState> = repository.observeProjects()
         .map { projects ->
             HomeUiState(
                 projectCount = projects.size,
@@ -38,35 +38,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun createProject(name: String): String? {
-        val normalizedName = name.trim()
-        if (normalizedName.isEmpty()) return null
-        val project = Project(projectId = UUID.randomUUID().toString(), name = normalizedName, canvas = Canvas())
+        if (name.trim().isEmpty()) return null
+        var createdProjectId: String? = null
         viewModelScope.launch {
-            fileStore.save(project)
-            projectDao.upsert(
-                ProjectEntity(
-                    projectId = project.projectId,
-                    name = project.name,
-                    schemaVersion = project.schemaVersion,
-                    revision = project.revision,
-                    durationMs = project.durationMs,
-                    canvasWidth = project.canvas.width,
-                    canvasHeight = project.canvas.height,
-                    frameRate = project.canvas.frameRate,
-                    documentPath = "projects/${project.projectId}/project.json",
-                    syncState = SyncState.LOCAL_ONLY.name,
-                    updatedAtEpochMs = System.currentTimeMillis(),
-                ),
-            )
+            createdProjectId = repository.createProject(name, Canvas()).projectId
         }
-        return project.projectId
+        return createdProjectId
     }
 
     fun deleteProject(projectId: String) {
-        viewModelScope.launch {
-            fileStore.delete(projectId)
-            projectDao.delete(projectId)
-        }
+        viewModelScope.launch { repository.deleteProject(projectId) }
     }
 
     override fun onCleared() {
