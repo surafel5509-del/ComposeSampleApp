@@ -14,7 +14,7 @@ class EditorController(
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
     suspend fun open(projectId: String): Boolean {
-        val project = repository.get(projectId) ?: return false
+        val project = repository.getProject(projectId) ?: return false
         _state.value = EditorState(project = project)
         return true
     }
@@ -34,7 +34,7 @@ class EditorController(
 
     suspend fun save(): Boolean {
         val project = _state.value.project ?: return false
-        repository.save(project)
+        repository.saveProject(project)
         _state.update { it.copy(isDirty = false) }
         return true
     }
