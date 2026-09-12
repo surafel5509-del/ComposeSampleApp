@@ -6,6 +6,7 @@ import android.net.Uri
 import android.media.MediaMetadataRetriever
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.composeapp.core.database.AssetEntity
 import com.example.composeapp.core.database.DatabaseFactory
 import com.example.composeapp.core.editor.EditorController
