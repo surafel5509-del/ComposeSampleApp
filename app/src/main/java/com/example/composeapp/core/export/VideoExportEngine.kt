@@ -10,25 +10,45 @@ import android.media.MediaMuxer
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.ReturnCode
+import com.example.composeapp.core.model.ClipEditState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.ByteBuffer
 
-/** Real offline Android export path. Remuxes selected source media without re-encoding. */
+/** Offline export engine. FFmpeg is the primary renderer; remux is retained as a lossless fallback. */
 class VideoExportEngine(private val context: Context) {
     suspend fun exportClip(
         source: Uri,
         startMs: Long,
         durationMs: Long,
+        edit: ClipEditState = ClipEditState(),
         displayName: String = "MoreCut_${System.currentTimeMillis()}.mp4",
     ): Result<Uri> = withContext(Dispatchers.IO) {
         runCatching {
-            val temp = File(context.cacheDir, "export_${System.nanoTime()}.mp4")
+            val input = File(context.cacheDir, "ffmpeg_input_${System.nanoTime()}.mp4")
+            val temp = File(context.cacheDir, "ffmpeg_output_${System.nanoTime()}.mp4")
             try {
-                remux(context.contentResolver, source, temp.absolutePath, startMs, durationMs)
+                context.contentResolver.openInputStream(source)?.use { stream ->
+                    input.outputStream().use { stream.copyTo(it) }
+                } ?: error("Unable to open source video")
+
+                val command = FfmpegCommandBuilder.videoCommand(
+                    input = input,
+                    output = temp,
+                    startMs = startMs,
+                    durationMs = durationMs,
+                    edit = edit,
+                )
+                val session = FFmpegKit.execute(command)
+                if (!ReturnCode.isSuccess(session.returnCode) || !temp.exists() || temp.length() == 0L) {
+                    remux(context.contentResolver, source, temp.absolutePath, startMs, durationMs)
+                }
                 publish(temp, displayName)
             } finally {
+                input.delete()
                 temp.delete()
             }
         }
@@ -39,17 +59,20 @@ class VideoExportEngine(private val context: Context) {
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/MoreCut")
-            put(MediaStore.Video.Media.IS_PENDING, 1)
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/MoreCut")
+                put(MediaStore.Video.Media.IS_PENDING, 1)
+            }
         }
         val output = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
             ?: error("Unable to create output video")
         try {
             resolver.openOutputStream(output)?.use { target -> temp.inputStream().use { it.copyTo(target) } }
                 ?: error("Unable to open output video")
-            values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
-            resolver.update(output, values, null, null)
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                val published = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
+                resolver.update(output, published, null, null)
+            }
             return output
         } catch (t: Throwable) {
             resolver.delete(output, null, null)
@@ -104,15 +127,51 @@ class VideoExportEngine(private val context: Context) {
     }
 }
 
-/** Portable FFmpeg filter graph builder used by the native FFmpeg backend. */
 object FfmpegCommandBuilder {
-    fun videoFilter(brightness: Float, contrast: Float, saturation: Float, rotation: Int, crop: String? = null, blur: Float = 0f, sharpen: Float = 0f): String {
+    fun videoCommand(input: File, output: File, startMs: Long, durationMs: Long, edit: ClipEditState): String {
         val filters = mutableListOf<String>()
-        if (crop != null) filters += "crop=$crop"
-        if (brightness != 0f || contrast != 1f || saturation != 1f) filters += "eq=brightness=$brightness:contrast=$contrast:saturation=$saturation"
-        if (blur > 0f) filters += "boxblur=${blur.coerceAtLeast(1f)}"
-        if (sharpen > 0f) filters += "unsharp=5:5:${sharpen.coerceIn(0f,5f)}:5:5:0"
-        when ((rotation % 360 + 360) % 360) { 90 -> filters += "transpose=1"; 180 -> filters += "hflip,vflip"; 270 -> filters += "transpose=2" }
-        return filters.joinToString(",")
+        if (edit.cropRight < 1f || edit.cropBottom < 1f || edit.cropLeft > 0f || edit.cropTop > 0f) {
+            filters += "crop=iw*${edit.cropRight - edit.cropLeft}:ih*${edit.cropBottom - edit.cropTop}:iw*${edit.cropLeft}:ih*${edit.cropTop}"
+        }
+        if (edit.brightness != 0f || edit.contrast != 1f || edit.saturation != 1f || edit.exposure != 0f) {
+            filters += "eq=brightness=${edit.brightness}:contrast=${edit.contrast}:saturation=${edit.saturation}:gamma=${1f + edit.exposure}"
+        }
+        if (edit.blur > 0f) filters += "boxblur=${edit.blur.coerceAtLeast(1f)}"
+        if (edit.sharpen > 0f) filters += "unsharp=5:5:${edit.sharpen.coerceIn(0f, 5f)}:5:5:0"
+        when ((edit.rotation % 360 + 360) % 360) {
+            90 -> filters += "transpose=1"
+            180 -> filters += "hflip,vflip"
+            270 -> filters += "transpose=2"
+        }
+        if (edit.flipHorizontal) filters += "hflip"
+        if (edit.flipVertical) filters += "vflip"
+        when (edit.filter) {
+            "Cinematic" -> filters += "eq=contrast=1.12:saturation=1.18"
+            "Mono" -> filters += "hue=s=0"
+            "Vintage" -> filters += "colorbalance=rs=.1:gs=.03:bs=-.03"
+        }
+        if (edit.effect == "Glow") filters += "unsharp=3:3:-1:3:3:0"
+
+        val audioFilters = mutableListOf<String>()
+        if (edit.volume != 1f) audioFilters += "volume=${edit.volume.coerceIn(0f, 2f)}"
+        if (edit.fadeInMs > 0L) audioFilters += "afade=t=in:st=0:d=${edit.fadeInMs / 1000f}"
+        if (edit.fadeOutMs > 0L) audioFilters += "afade=t=out:st=${(durationMs - edit.fadeOutMs).coerceAtLeast(0L) / 1000f}:d=${edit.fadeOutMs / 1000f}"
+        if (edit.reverb > 0f) audioFilters += "aecho=0.8:0.88:60:0.${(edit.reverb * 100).toInt().coerceIn(10, 80)}"
+
+        val vf = filters.joinToString(",")
+        val af = audioFilters.joinToString(",")
+        val inputPath = shellQuote(input.absolutePath)
+        val outputPath = shellQuote(output.absolutePath)
+        return buildString {
+            append("-y -ss ${startMs.coerceAtLeast(0L) / 1000f} -i $inputPath ")
+            append("-t ${durationMs.coerceAtLeast(1L) / 1000f} ")
+            append("-map 0:v:0? -map 0:a:0? -c:v libopenh264 -b:v 8M -preset fast ")
+            append("-c:a aac -b:a 192k -movflags +faststart ")
+            if (vf.isNotBlank()) append("-vf ${shellQuote(vf)} ")
+            if (af.isNotBlank()) append("-af ${shellQuote(af)} ")
+            append(outputPath)
+        }
     }
+
+    private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 }
