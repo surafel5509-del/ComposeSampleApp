@@ -31,9 +31,14 @@ class VideoExportEngine(private val context: Context) {
             val input = File(context.cacheDir, "ffmpeg_input_${System.nanoTime()}.mp4")
             val temp = File(context.cacheDir, "ffmpeg_output_${System.nanoTime()}.mp4")
             try {
-                context.contentResolver.openInputStream(source)?.use { stream ->
-                    input.outputStream().use { stream.copyTo(it) }
-                } ?: error("Unable to open source video")
+                val sourceFile = if (source.scheme == "file") File(source.path ?: source.toString().removePrefix("file://")) else null
+                if (sourceFile != null && sourceFile.exists()) {
+                    sourceFile.copyTo(input, overwrite = true)
+                } else {
+                    context.contentResolver.openInputStream(source)?.use { stream ->
+                        input.outputStream().use { stream.copyTo(it) }
+                    } ?: error("Unable to open source video")
+                }
 
                 val command = FfmpegCommandBuilder.videoCommand(
                     input = input,
@@ -85,9 +90,14 @@ class VideoExportEngine(private val context: Context) {
         val muxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
         var started = false
         try {
-            resolver.openFileDescriptor(source, "r")?.use { pfd ->
-                extractor.setDataSource(pfd.fileDescriptor)
-                val trackMap = IntArray(extractor.trackCount) { -1 }
+            val sourceFile = if (source.scheme == "file") File(source.path ?: source.toString().removePrefix("file://")) else null
+            if (sourceFile != null && sourceFile.exists()) {
+                extractor.setDataSource(sourceFile.absolutePath)
+            } else {
+                val pfd = resolver.openFileDescriptor(source, "r") ?: error("Unable to open source video")
+                pfd.use { extractor.setDataSource(it.fileDescriptor) }
+            }
+            val trackMap = IntArray(extractor.trackCount) { -1 }
                 for (i in 0 until extractor.trackCount) {
                     val format = extractor.getTrackFormat(i)
                     val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
@@ -118,7 +128,6 @@ class VideoExportEngine(private val context: Context) {
                     }
                     extractor.unselectTrack(i)
                 }
-            } ?: error("Unable to open source video")
         } finally {
             if (started) runCatching { muxer.stop() }
             muxer.release()
